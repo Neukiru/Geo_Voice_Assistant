@@ -5,9 +5,6 @@ import com.example.myapplication.AudioConstants.channelCount
 import com.example.myapplication.AudioConstants.sampleRate
 import com.example.myapplication.AudioStreamingUtils.BytetoFloatArray
 import android.content.res.AssetManager
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import org.pytorch.IValue
 import org.pytorch.Module
 import org.pytorch.LiteModuleLoader
@@ -34,7 +31,7 @@ class HowlEngine(assetManager: AssetManager) {
     private var chunkByteBuffer: ByteArray = ByteArray(chunkByteBufferSize)
 
     private var currTime: Long = 0L
-    private var currLabel: Nothing? = null
+    private var currLabel: Int? = null
     private var targetState: Int = 0
     private var lastValidTimestamp: Long = 0L
 
@@ -55,7 +52,7 @@ class HowlEngine(assetManager: AssetManager) {
                     // goal state is reached
                     return true
                 }
-                val currLabel = sequence[targetState - 1]
+                currLabel = sequence[targetState - 1]
                 lastValidTimestamp = currTimestamp
             } else if (label == currLabel) {
                 // label has not changed, only update lastValidTimestamp
@@ -116,7 +113,7 @@ class HowlEngine(assetManager: AssetManager) {
     }
 
     fun infer(byteBuffer: ByteArray): Boolean {
-        var audioFloatArr = BytetoFloatArray(byteBuffer)
+        val audioFloatArr = BytetoFloatArray(byteBuffer)
         val shape = longArrayOf(1, audioFloatArr.size.toLong())
         val audioTensor = Tensor.fromBlob(audioFloatArr, shape)
 
@@ -143,7 +140,7 @@ class HowlEngine(assetManager: AssetManager) {
         } else{
             false
         }
-        }
+
 
     }
 
