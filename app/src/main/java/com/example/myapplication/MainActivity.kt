@@ -31,7 +31,7 @@ import java.util.Date
 import java.nio.FloatBuffer
 
 
-class AudioWebSocket {
+class AudioWebSocket(mainBinding: ActivityMainBinding, assetManager: AssetManager) {
     private val TAG = "AudioWebSocket"
     private val baseURL = "http://10.0.2.2:8011"
     private val ws_path = "/ws/socket.io/"
@@ -49,9 +49,10 @@ class AudioWebSocket {
 //    private var webSocket: WebSocket? = null
     private var audioRecord: AudioRecord? = null
     private var isRecording = false
-    private var binding: ActivityMainBinding
-    private var assetManager: AssetManager ?= null
+    private var binding: ActivityMainBinding = mainBinding
+    private var assetManager: AssetManager ?= assetManager
     private var howlModule: Module? = null
+    private var sileroVAD: Module? = null
     private lateinit var mSocket: Socket
     public enum class MyEnum(val value: String) {
         HEY("halo"),
@@ -84,10 +85,9 @@ class AudioWebSocket {
     private val chunkByteBufferSize = (sampleRate * channelCount * bitsPerSample * chunkByteBufferDuration / 8).toInt()
     private val chunkByteBuffer = ByteArray(chunkByteBufferSize)
 
-    constructor(mainBinding: ActivityMainBinding, assetManager: AssetManager) {
-        this.binding = mainBinding
-        this.assetManager = assetManager
+    init {
         this.howlModule =  LiteModuleLoader.loadModuleFromAsset(assetManager,"howl_mobile.ptl")
+        this.sileroVAD = LiteModuleLoader.loadModuleFromAsset(assetManager,"silero_VAD.ptl")
         println("model loaded")
     }
 
