@@ -115,7 +115,7 @@ class HowlEngine(assetManager: AssetManager) {
         lastValidTimestamp = 0
     }
 
-    fun infer(byteBuffer: ByteArray){
+    fun infer(byteBuffer: ByteArray): Boolean {
         var audioFloatArr = BytetoFloatArray(byteBuffer)
         val shape = longArrayOf(1, audioFloatArr.size.toLong())
         val audioTensor = Tensor.fromBlob(audioFloatArr, shape)
@@ -136,13 +136,13 @@ class HowlEngine(assetManager: AssetManager) {
 
         labelHistory = labelHistory.dropWhile { currTime - it.first > inferenceWindowMs }.toMutableList()
 
-        if(findInSequence(labelHistory)){
-            return True
-            labelHistory = emptyList()
-            GlobalScope.launch {
-                delay(2000)
-                binding.transcribedText.text = ""
-            }
+        return if(findInSequence(labelHistory)){
+            reset()
+            true
+
+        } else{
+            false
+        }
         }
 
     }
