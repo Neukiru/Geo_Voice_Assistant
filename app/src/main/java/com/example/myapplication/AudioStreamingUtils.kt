@@ -15,4 +15,12 @@ object AudioStreamingUtils {
         }
         return audioFloatArr
     }
+
+    fun windowStriding(windowByteBuffer:ByteArray, strideByteBuffer:ByteArray, strideByteBufferSize:Int){
+
+        System.arraycopy(windowByteBuffer, strideByteBufferSize, windowByteBuffer, 0, windowByteBuffer.size - strideByteBufferSize)
+
+        // Copy the new audio data to the end of the buffer
+        System.arraycopy(strideByteBuffer, 0, windowByteBuffer, windowByteBuffer.size - strideByteBufferSize, strideByteBuffer.size)
+    }
 }

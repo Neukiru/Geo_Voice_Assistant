@@ -11,15 +11,15 @@ import org.pytorch.LiteModuleLoader
 import org.pytorch.Tensor
 import java.util.Date
 
-class HowlEngine(assetManager: AssetManager) {
-    // Properties
+class WakeWordEngine(assetManager: AssetManager) {
+    //vars
     private var howlModule: Module? = null
     private var predHistory: List<Pair<Long, FloatArray>> = emptyList()
     private var labelHistory: List<Pair<Long, Int>> = emptyList()
     private val sequence: IntArray = intArrayOf(0, 1)
 
     private val smoothingWindowMs: Float = 50.0f
-    private val inferenceWindowMs: Long = 2000L
+    private val inferenceWindowMs: Long = 600L // add 500 for each consecutive word
     private val toleranceWindowMs: Float = 500.0f
 
     private val inferenceByteBufferDuration: Float = 0.5f
@@ -128,7 +128,6 @@ class HowlEngine(assetManager: AssetManager) {
 
         labelHistory = labelHistory.plus(Pair(currTime, maxLabel))
 
-        //state machine
         currTime = Date().time
 
         labelHistory = labelHistory.dropWhile { currTime - it.first > inferenceWindowMs }.toMutableList()

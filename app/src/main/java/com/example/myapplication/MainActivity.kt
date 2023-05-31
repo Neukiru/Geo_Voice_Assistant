@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.databinding.DataBindingUtil
 import com.example.myapplication.databinding.ActivityMainBinding
+import com.example.myapplication.AudioStreamingUtils.windowStriding
 import io.socket.client.IO
 import io.socket.client.Socket
 import kotlinx.coroutines.GlobalScope
@@ -52,6 +53,7 @@ class AudioWebSocket(mainBinding: ActivityMainBinding, assetManager: AssetManage
     private var binding: ActivityMainBinding = mainBinding
     private var assetManager: AssetManager ?= assetManager
     private var howlModule: Module? = null
+    private var howlEngine: WakeWordEngine? = null
     private var sileroVAD: Module? = null
     private lateinit var mSocket: Socket
     public enum class MyEnum(val value: String) {
@@ -87,7 +89,9 @@ class AudioWebSocket(mainBinding: ActivityMainBinding, assetManager: AssetManage
 
     init {
         this.howlModule =  LiteModuleLoader.loadModuleFromAsset(assetManager,"howl_mobile.ptl")
-        this.sileroVAD = LiteModuleLoader.loadModuleFromAsset(assetManager,"silero_VAD.ptl")
+        this.howlEngine = WakeWordEngine(assetManager)
+        this.sileroVAD = LiteModuleLoader.loadModuleFromAsset(assetManager,"sileroVAD.ptl")
+
         println("model loaded")
     }
 
@@ -209,79 +213,51 @@ class AudioWebSocket(mainBinding: ActivityMainBinding, assetManager: AssetManage
 
             while (isRecording) {
 
-                val bytesRead = audioRecord?.read(chunkByteBuffer, 0, chunkByteBufferSize) ?: 0
 
-                System.arraycopy(inferenceByteBuffer, chunkByteBufferSize, inferenceByteBuffer, 0, inferenceByteBuffer.size - chunkByteBufferSize)
 
-                // Copy the new audio data to the end of the buffer
-                System.arraycopy(chunkByteBuffer, 0, inferenceByteBuffer, inferenceByteBuffer.size - chunkByteBufferSize, chunkByteBuffer.size)
+//                System.arraycopy(inferenceByteBuffer, chunkByteBufferSize, inferenceByteBuffer, 0, inferenceByteBuffer.size - chunkByteBufferSize)
+//
+//                // Copy the new audio data to the end of the buffer
+//                System.arraycopy(chunkByteBuffer, 0, inferenceByteBuffer, inferenceByteBuffer.size - chunkByteBufferSize, chunkByteBuffer.size)
 
-                val shorts = ShortArray(inferenceByteBuffer.size / 2)
-                ByteBuffer.wrap(inferenceByteBuffer).order(LITTLE_ENDIAN).asShortBuffer()[shorts]
-                var audioFloatArr = FloatArray(shorts.size)
 
-                for (i in shorts.indices) {
-                    audioFloatArr[i] = shorts[i] / Short.MAX_VALUE.toFloat()
 
-                }
-
-                val shape = longArrayOf(1, audioFloatArr.size.toLong())
-                val audioTensor = Tensor.fromBlob(audioFloatArr, shape)
-
-                val prediction = howlModule?.forward(IValue.from(audioTensor))?.toTensor()
-                val predictionFloatArray = prediction?.dataAsFloatArray
-//                println(decode_label(predictionFloatArray))
-                var currTime = Date().time
-                predHistory = predHistory.plus(Pair(currTime,predictionFloatArray!!))
-
-                predHistory = predHistory.dropWhile { currTime - it.first > smoothing_window_ms }.toMutableList()
-
-                val lattice = Array(predHistory.size) { i ->
-                    predHistory[i].second
-                }
-
-                // Stack the 2D array along the first axis
-                val stackedLattice = Array(lattice[0].size) { i ->
-                    FloatArray(lattice.size) { j ->
-                        lattice[j][i]
-                    }
-                }
-
-                // Find the maximum value along the first axis of the stacked 2D array
-                val latticeMax = FloatArray(stackedLattice.size) { i ->
-                    var maxVal = Float.NEGATIVE_INFINITY
-                    for (j in stackedLattice[i].indices) {
-                        if (stackedLattice[i][j] > maxVal) {
-                            maxVal = stackedLattice[i][j]
-                        }
-                    }
-                    maxVal
-                }
-
-                // Find the index of the maximum value
-                var maxLabel = 0
-                for (i in latticeMax.indices) {
-                    if (latticeMax[i] > latticeMax[maxLabel]) {
-                        maxLabel = i
-                    }
-                }
-
-//                print("${currTime} ${maxLabel}")
-                labelHistory = labelHistory.plus(Pair(currTime, maxLabel))
-//                println("label history size is ${labelHistory.size}")
-                //state machine
-                currTime = Date().time
-
-                labelHistory = labelHistory.dropWhile { currTime - it.first > inferenceWindowMs }.toMutableList()
-
-                if(findInSequence(labelHistory)){
-                    binding.transcribedText.text = "                                 მდებარეობს"
-                    labelHistory = emptyList()
+                if(howlEngine!!.infer(inferenceByteBuffer)) {
+                    binding.transcribedText.text = "                                 სოფიფი"
                     GlobalScope.launch {
                         delay(2000)
                         binding.transcribedText.text = ""
+                        //
+
                     }
+//                    val audioFloatArr = AudioStreamingUtils.BytetoFloatArray(inferenceByteBuffer)
+//                    val shape = longArrayOf(1, audioFloatArr.size.toLong())
+//                    val audioTensor = Tensor.fromBlob(audioFloatArr, shape)
+////
+//                    val iValue = IValue.from(audioTensor)
+//                    val srTensor = Tensor.fromBlob(floatArrayOf(16000f), longArrayOf(1))
+//                    val srIValue = IValue.from(srTensor)
+                    val wav = FloatArray(4000) // Fill this with your actual audio data
+
+                    // Create tensors from the data
+                    val wavTensor = Tensor.fromBlob(wav.sliceArray(0 until 800), longArrayOf(1, 800))
+                    val rateTensor = Tensor.fromBlob(longArrayOf(16000), longArrayOf(1))
+
+                    // Wrap the tensors in IValues
+                    val wavIValue = IValue.from(wavTensor)
+                    val rateIValue = IValue.from(rateTensor)
+                    val inputs = IValue.listFrom(wavIValue, rateIValue)
+
+                    val prediction = sileroVAD?.forward(inputs)?.toTensor()
+
+
                 }
+                else{
+                    val bytesRead = audioRecord?.read(chunkByteBuffer, 0, chunkByteBufferSize) ?: 0
+                    windowStriding(inferenceByteBuffer,chunkByteBuffer,chunkByteBufferSize)
+
+                }
+
 
 
 

@@ -64,7 +64,7 @@ dependencies {
 //    implementation files('libs/pytorch_android_lite-1.12.2.aar')
 //    implementation 'com.facebook.soloader:soloader:0.10.1'
 //    implementation(name:'pytorch_android_lite-1.12.2', ext:'aar')
-    implementation 'org.pytorch:pytorch_android_lite:1.13.0'
+    implementation 'org.pytorch:pytorch_android_lite:1.13.1'
     implementation "org.jetbrains.kotlinx:multik-core:0.2.0"
     implementation "org.jetbrains.kotlinx:multik-default:0.2.0"
 }
